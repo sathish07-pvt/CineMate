@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # 🎬 CineMate – Your Personal Movie Discovery & Social Viewing Platform
 
 > **Find. Discover. Review. Watch Together.**
@@ -243,3 +244,7 @@ To connect to an external PostgreSQL database:
 
 ## 📄 License
 This project is licensed under the MIT License. Movie metadata and posters are provided by TMDB.
+=======
+# CineMate
+CineMate - A movie discovery and OTT platform with regional language recommendations. 
+>>>>>>> origin/main
