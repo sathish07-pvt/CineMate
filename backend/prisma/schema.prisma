@@ -1,0 +1,181 @@
+// This is your Prisma schema file.
+// Learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// Default datasource is SQLite for instant zero-dependency local dev.
+// To use PostgreSQL, change provider to "postgresql" and update DATABASE_URL in .env.
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                 String             @id @default(uuid())
+  email              String             @unique
+  username           String             @unique
+  passwordHash       String
+  avatarUrl          String?
+  bio                String?
+  preferredRegion    String             @default("US")
+  preferredLanguages String             @default("en")
+  favoriteGenres     String             @default("28,12,878")
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  watchlist          WatchlistItem[]
+  reviews            MovieReview[]
+  sentFriendRequests Friendship[]       @relation("SentFriendships")
+  receivedFriendRequests Friendship[]   @relation("ReceivedFriendships")
+  hostedRooms        WatchRoom[]        @relation("HostedRooms")
+  roomParticipations RoomParticipant[]
+  messages           ChatMessage[]
+  searchHistory      SearchHistory[]
+  activities         UserActivity[]
+}
+
+model WatchlistItem {
+  id          String   @id @default(uuid())
+  userId      String
+  tmdbId      Int
+  mediaType   String   @default("movie")
+  title       String
+  posterPath  String?
+  backdropPath String?
+  voteAverage Float    @default(0)
+  releaseDate String?
+  isWatched   Boolean  @default(false)
+  addedAt     DateTime @default(now())
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, tmdbId, mediaType])
+  @@index([userId])
+  @@index([tmdbId, mediaType])
+}
+
+model MovieReview {
+  id         String   @id @default(uuid())
+  userId     String
+  tmdbId     Int
+  mediaType  String   @default("movie")
+  title      String
+  posterPath String?
+  rating     Int      // 1 to 10
+  content    String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, tmdbId, mediaType])
+  @@index([tmdbId, mediaType])
+  @@index([userId])
+}
+
+model SearchHistory {
+  id        String   @id @default(uuid())
+  userId    String
+  query     String
+  language  String?
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model MovieMetadataCache {
+  id         String   @id @default(uuid())
+  cacheKey   String   @unique
+  data       String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+
+  @@index([cacheKey])
+  @@index([expiresAt])
+}
+
+model Friendship {
+  id         String   @id @default(uuid())
+  senderId   String
+  receiverId String
+  status     String   @default("PENDING") // PENDING, ACCEPTED, DECLINED
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  sender     User     @relation("SentFriendships", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver   User     @relation("ReceivedFriendships", fields: [receiverId], references: [id], onDelete: Cascade)
+
+  @@unique([senderId, receiverId])
+  @@index([receiverId])
+}
+
+model WatchRoom {
+  id               String            @id @default(uuid())
+  roomCode         String            @unique
+  hostId           String
+  tmdbId           Int
+  mediaType        String            @default("movie")
+  title            String
+  posterPath       String?
+  backdropPath     String?
+  status           String            @default("WAITING") // WAITING, COUNTDOWN, PLAYING, PAUSED, ENDED
+  currentTimestamp Float             @default(0)
+  isSyncing        Boolean           @default(false)
+  countdown        Int?
+  providerName     String?
+  providerUrl      String?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  host             User              @relation("HostedRooms", fields: [hostId], references: [id], onDelete: Cascade)
+  participants     RoomParticipant[]
+  messages         ChatMessage[]
+
+  @@index([roomCode])
+}
+
+model RoomParticipant {
+  id       String    @id @default(uuid())
+  roomId   String
+  userId   String
+  isReady  Boolean   @default(false)
+  joinedAt DateTime  @default(now())
+
+  room     WatchRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([roomId, userId])
+  @@index([roomId])
+}
+
+model ChatMessage {
+  id        String    @id @default(uuid())
+  roomId    String
+  userId    String
+  type      String    @default("CHAT") // CHAT, REACTION, SYSTEM
+  content   String
+  createdAt DateTime  @default(now())
+
+  room      WatchRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([roomId])
+}
+
+model UserActivity {
+  id        String   @id @default(uuid())
+  userId    String
+  type      String   // REVIEW, WATCHLIST, ROOM_CREATED
+  title     String
+  mediaId   Int?
+  details   String?
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
